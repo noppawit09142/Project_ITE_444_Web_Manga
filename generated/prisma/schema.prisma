@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model products {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(100)
+  price       Decimal @db.Decimal(10, 2)
+  img_url     String? @db.VarChar(255)
+  description String? @db.Text
+  stock       Int
+}
+
+model student {
+  id            Int      @id @default(autoincrement())
+  student_code  String   @unique(map: "student_code") @db.VarChar(15)
+  student_name  String   @db.VarChar(150)
+  student_major String   @db.VarChar(200)
+  dateCreate    DateTime @default(now()) @db.Timestamp(0)
+}
+
+model tbl_test {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(150)
+  lastname   String   @db.VarChar(150)
+  dataCreate DateTime @default(now()) @db.Timestamp(0)
+}
