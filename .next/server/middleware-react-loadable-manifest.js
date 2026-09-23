@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST='{"components\\\\BootstrapClient.js -> bootstrap/dist/js/bootstrap.bundle.min.js":{"id":8451,"files":["static/chunks/451.31bd9f74787f722a.js"]}}';

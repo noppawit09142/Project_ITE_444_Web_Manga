@@ -74,7 +74,7 @@ export async function createChapterAction(prevState, formData) {
 
     revalidatePath(`/manga/${mangaId}`);
     revalidatePath(`/admin/mangas`);
-    revalidatePath(`/admin/mangas/${mangaId}/chapters`);
+    revalidatePath(`/admin/mangas/${mangaId}/chapter`);
 
     return { success: true };
   } catch (error) {
@@ -90,6 +90,7 @@ export async function updateChapterAction(prevState, formData) {
   const chapterNumber = parseFloat(formData.get("chapter_number"));
   const title = formData.get("title");
   const files = formData.getAll("images");
+  const uploadMode = formData.get("upload_mode") || "replace"; // 'replace' หรือ 'append'
 
   if (!chapterId || !chapterNumber) {
     return { error: "กรุณากรอกข้อมูลให้ครบถ้วน" };
@@ -105,7 +106,7 @@ export async function updateChapterAction(prevState, formData) {
       },
     });
 
-    // ถ้ามีการอัปโหลดไฟล์รูปใหม่เข้ามาแทนที่
+    // ถ้ามีการอัปโหลดไฟล์รูปเข้ามา
     if (files && files.length > 0 && files[0].size > 0) {
       const uploadDir = path.join(process.cwd(), "public", "uploads", "chapters");
 
@@ -113,22 +114,33 @@ export async function updateChapterAction(prevState, formData) {
         mkdirSync(uploadDir, { recursive: true });
       }
 
-      // ดึงรูปภาพเก่าเพื่อลบออกจากเครื่อง
-      const oldPages = await prisma.chapter_pages.findMany({
-        where: { chapter_id: chapterId },
-      });
+      let startingPageNumber = 1;
 
-      for (const page of oldPages) {
-        if (page.image_url.startsWith("/uploads/")) {
-          const filePath = path.join(process.cwd(), "public", page.image_url);
-          await fs.unlink(filePath).catch(() => {});
+      if (uploadMode === "replace") {
+        // ดึงรูปภาพเก่าเพื่อลบออกจากเครื่อง
+        const oldPages = await prisma.chapter_pages.findMany({
+          where: { chapter_id: chapterId },
+        });
+
+        for (const page of oldPages) {
+          if (page.image_url.startsWith("/uploads/")) {
+            const filePath = path.join(process.cwd(), "public", page.image_url);
+            await fs.unlink(filePath).catch(() => {});
+          }
         }
-      }
 
-      // ลบข้อมูลหน้าเก่าใน DB
-      await prisma.chapter_pages.deleteMany({
-        where: { chapter_id: chapterId },
-      });
+        // ลบข้อมูลหน้าเก่าใน DB
+        await prisma.chapter_pages.deleteMany({
+          where: { chapter_id: chapterId },
+        });
+      } else {
+        // โหมด append: หารูปหน้าสุดท้าย
+        const lastPage = await prisma.chapter_pages.findFirst({
+          where: { chapter_id: chapterId },
+          orderBy: { page_number: "desc" },
+        });
+        startingPageNumber = lastPage ? lastPage.page_number + 1 : 1;
+      }
 
       // เซฟไฟล์รูปภาพชุดใหม่ลงดิสก์
       const pageUrls = [];
@@ -146,19 +158,19 @@ export async function updateChapterAction(prevState, formData) {
         pageUrls.push(`/uploads/chapters/${uniqueName}`);
       }
 
-      // บันทึกรูปภาพชุดใหม่ลง DB
+      // บันทึกรูปภาพลง DB
       if (pageUrls.length > 0) {
         await prisma.chapter_pages.createMany({
           data: pageUrls.map((url, index) => ({
             chapter_id: chapterId,
-            page_number: index + 1,
+            page_number: startingPageNumber + index,
             image_url: url,
           })),
         });
       }
     }
 
-    revalidatePath(`/admin/mangas/${mangaId}/chapters`);
+    revalidatePath(`/admin/mangas/${mangaId}/chapter`);
     revalidatePath(`/manga/${mangaId}`);
     revalidatePath(`/manga/${mangaId}/chapter/${chapterId}`);
 
@@ -166,5 +178,54 @@ export async function updateChapterAction(prevState, formData) {
   } catch (error) {
     console.error("Error updating chapter:", error);
     return { error: "เกิดข้อผิดพลาดในการอัปเดตตอน" };
+  }
+}
+
+// 3. ฟังก์ชันสำหรับลบรูปภาพเฉพาะหน้า (Delete single page)
+export async function deletePageAction(pageId, chapterId, mangaId) {
+  try {
+    const page = await prisma.chapter_pages.findUnique({
+      where: { id: pageId },
+    });
+
+    if (!page) {
+      return { error: "ไม่พบรูปภาพหน้านี้ในระบบ" };
+    }
+
+    // ลบไฟล์รูปภาพออกจากดิสก์
+    if (page.image_url && page.image_url.startsWith("/uploads/")) {
+      const filePath = path.join(process.cwd(), "public", page.image_url);
+      await fs.unlink(filePath).catch(() => {});
+    }
+
+    // ลบจากฐานข้อมูล
+    await prisma.chapter_pages.delete({
+      where: { id: pageId },
+    });
+
+    // เรียงลำดับเลขหน้าใหม่ให้ต่อเนื่องกัน
+    const remainingPages = await prisma.chapter_pages.findMany({
+      where: { chapter_id: chapterId },
+      orderBy: { page_number: "asc" },
+    });
+
+    for (let i = 0; i < remainingPages.length; i++) {
+      if (remainingPages[i].page_number !== i + 1) {
+        await prisma.chapter_pages.update({
+          where: { id: remainingPages[i].id },
+          data: { page_number: i + 1 },
+        });
+      }
+    }
+
+    if (mangaId) {
+      revalidatePath(`/admin/mangas/${mangaId}/chapter`);
+      revalidatePath(`/manga/${mangaId}/chapter/${chapterId}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting chapter page:", error);
+    return { error: "เกิดข้อผิดพลาดในการลบรูปภาพ" };
   }
 }

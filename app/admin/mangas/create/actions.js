@@ -3,13 +3,16 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { existsSync, mkdirSync } from "fs";
+import fs from "fs/promises";
+import path from "path";
 
 export async function createManga(prevState, formData) {
   const title = formData.get("title")?.trim() || "";
   const author = formData.get("author")?.trim() || "";
-  const cover_url = formData.get("cover_url")?.trim() || "";
   const description = formData.get("description")?.trim() || "";
   const status = formData.get("status") || "ongoing";
+  const coverFile = formData.get("cover_image");
 
   const errors = [];
 
@@ -18,9 +21,9 @@ export async function createManga(prevState, formData) {
     errors.push("ชื่อเรื่องต้องมีอย่างน้อย 2 ตัวอักษร");
   }
 
-  // 2. ตรวจ URL รูปปก
-  if (!cover_url || !cover_url.startsWith("http")) {
-    errors.push("URL รูปปกต้องขึ้นต้นด้วย http หรือ https");
+  // 2. ตรวจไฟล์รูปปก
+  if (!coverFile || typeof coverFile === "string" || coverFile.size === 0) {
+    errors.push("กรุณาเลือกไฟล์รูปภาพหน้าปก");
   }
 
   // 3. ตรวจเรื่องย่อ
@@ -35,20 +38,34 @@ export async function createManga(prevState, formData) {
       values: {
         title,
         author,
-        cover_url,
         description,
         status,
       },
     };
   }
 
-  // บันทึกข้อมูลลงฐานข้อมูลด้วย Prisma ORM
   try {
+    // จัดเก็บไฟล์รูปภาพหน้าปกลงเครื่อง
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "covers");
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const bytes = await coverFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const cleanFileName = coverFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const uniqueName = `${Date.now()}_${cleanFileName}`;
+    const filePath = path.join(uploadDir, uniqueName);
+
+    await fs.writeFile(filePath, buffer);
+    const coverUrl = `/uploads/covers/${uniqueName}`;
+
+    // บันทึกข้อมูลลงฐานข้อมูลด้วย Prisma ORM
     await prisma.mangas.create({
       data: {
         title,
         author,
-        cover_url,
+        cover_url: coverUrl,
         description,
         status,
       },
@@ -60,7 +77,6 @@ export async function createManga(prevState, formData) {
       values: {
         title,
         author,
-        cover_url,
         description,
         status,
       },

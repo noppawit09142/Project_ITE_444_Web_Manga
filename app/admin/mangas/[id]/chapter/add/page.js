@@ -31,10 +31,10 @@ export default function AddChapterPage({ params }) {
         timer: 1500,
         showConfirmButton: false,
       }).then(() => {
-        window.location.href = "/admin/mangas";
+        window.location.href = `/admin/mangas/${mangaId}/chapter`;
       });
     }
-  }, [state]);
+  }, [state, mangaId]);
 
   const handleSubmit = () => {
     setIsUploading(true);
@@ -52,7 +52,7 @@ export default function AddChapterPage({ params }) {
     <div className="container py-4" style={{ maxWidth: "700px" }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>เพิ่มตอนใหม่ (Manga ID: {mangaId})</h3>
-        <Link href="/admin/mangas" className="btn btn-outline-secondary">
+        <Link href={`/admin/mangas/${mangaId}/chapter`} className="btn btn-outline-secondary">
           ย้อนกลับ
         </Link>
       </div>

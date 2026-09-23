@@ -4,8 +4,11 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import BootstrapClient from "@/components/BootstrapClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function MangaDetailPage({ params }) {
-  const mangaId = Number(params.id);
+  const resolvedParams = await params;
+  const mangaId = Number(resolvedParams.id);
 
   if (isNaN(mangaId)) {
     notFound();

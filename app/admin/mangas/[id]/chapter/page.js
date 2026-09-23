@@ -8,6 +8,8 @@ import SweetAlertDel from "@/components/SweetAlertDel";
 import fs from "fs/promises";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export default async function ManageChaptersPage({ params }) {
   // รองรับ Next.js 15 (await params)
   const resolvedParams = await params;

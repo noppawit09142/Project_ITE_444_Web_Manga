@@ -5,6 +5,10 @@ import SuccessAlert from "@/components/SuccessAlert";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
+import fs from "fs/promises";
+import path from "path";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminMangasPage() {
   // Server Action สำหรับลบมังงะ
@@ -13,10 +17,41 @@ export default async function AdminMangasPage() {
     const id = Number(formData.get("id"));
 
     try {
+      // ดึงข้อมูลมังงะและรูปภาพของทุกตอนเพื่อลบไฟล์ออกจากเครื่อง
+      const manga = await prisma.mangas.findUnique({
+        where: { id },
+        include: {
+          chapters: {
+            include: {
+              pages: true,
+            },
+          },
+        },
+      });
+
+      if (manga) {
+        // ลบรูปภาพหน้าปก (หากบันทึกไว้ในโฟลเดอร์ uploads)
+        if (manga.cover_url && manga.cover_url.startsWith("/uploads/")) {
+          const coverPath = path.join(process.cwd(), "public", manga.cover_url);
+          await fs.unlink(coverPath).catch(() => {});
+        }
+
+        // ลบรูปภาพทั้งหมดของทุกตอน
+        for (const chapter of manga.chapters) {
+          for (const page of chapter.pages) {
+            if (page.image_url && page.image_url.startsWith("/uploads/")) {
+              const pagePath = path.join(process.cwd(), "public", page.image_url);
+              await fs.unlink(pagePath).catch(() => {});
+            }
+          }
+        }
+      }
+
       await prisma.mangas.delete({
         where: { id },
       });
       revalidatePath("/admin/mangas");
+      revalidatePath("/");
     } catch (error) {
       console.error("Error deleting manga:", error);
     }

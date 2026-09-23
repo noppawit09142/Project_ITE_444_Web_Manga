@@ -2,9 +2,12 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReadChapterPage({ params }) {
-  const mangaId = Number(params.id);
-  const chapterId = Number(params.chapterId);
+  const resolvedParams = await params;
+  const mangaId = Number(resolvedParams.id);
+  const chapterId = Number(resolvedParams.chapterId);
 
   if (isNaN(mangaId) || isNaN(chapterId)) {
     notFound();

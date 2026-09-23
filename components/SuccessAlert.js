@@ -15,7 +15,7 @@ export default function SuccessAlert() {
  
             Swal.fire({
                 title: "เพิ่มข้อมูลสำเร็จ",
-                text: "บันทึกสินค้าเรียบร้อยแล้ว",
+                text: "บันทึกข้อมูลมังงะเรียบร้อยแล้ว",
                 icon: "success",
                 confirmButtonText: "ตกลง"
             });
@@ -28,7 +28,7 @@ export default function SuccessAlert() {
  
             Swal.fire({
                 title: "ปรับปรุงข้อมูลสำเร็จ",
-                text: "บันทึกสินค้าเรียบร้อยแล้ว",
+                text: "บันทึกข้อมูลมังงะเรียบร้อยแล้ว",
                 icon: "success",
                 confirmButtonText: "ตกลง"
             });
