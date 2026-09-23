@@ -1,8 +1,8 @@
 {
   "components\\BootstrapClient.js -> bootstrap/dist/js/bootstrap.bundle.min.js": {
-    "id": "components\\BootstrapClient.js -> bootstrap/dist/js/bootstrap.bundle.min.js",
+    "id": 8451,
     "files": [
-      "static/chunks/_app-pages-browser_node_modules_bootstrap_dist_js_bootstrap_bundle_min_js.js"
+      "static/chunks/451.31bd9f74787f722a.js"
     ]
   }
 }
